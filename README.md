@@ -1,3 +1,5 @@
+<img width="1024" height="572" alt="image" src="https://github.com/user-attachments/assets/c12d657c-aa9c-4171-a76c-6bca80a1dc89" />
+
 # ClawPad
 
 **Half of what we type into AI agents is the same thing we typed yesterday.** ClawPad is a programmable physical macro pad that turns your most-used OpenClaw prompts into one-press actions — whether it's scheduling your standup, firing off an EOD report, or having your agent book a cab home.
