@@ -1,0 +1,33 @@
+{
+  "buttons": {
+    "1": {
+      "label": "Schedule Meeting",
+      "message": "Schedule a 30-minute meeting with karthik bro. Send them a calendar invite with a Google Meet link. Topic: Weekly check-in.",
+      "icon": "calendar",
+      "color": "#6366f1",
+      "gpio": 12,
+      "enabled": true
+    },
+    "2": {
+      "label": "Book Cab",
+      "message": "Book a cab from the office to my home address. Schedule it for 6:30 PM today. Prefer a sedan.",
+      "icon": "car",
+      "color": "#f59e0b",
+      "gpio": 14,
+      "enabled": true
+    },
+    "3": {
+      "label": "Standup Summary",
+      "message": "Demo message",
+      "icon": "message-circle",
+      "color": "#10b981",
+      "gpio": 27,
+      "enabled": true
+    }
+  },
+  "settings": {
+    "openclaw_url": "http://localhost:18789",
+    "auto_send": true,
+    "send_delay_ms": 100
+  }
+}

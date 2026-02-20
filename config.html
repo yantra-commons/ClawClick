@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClawPad — Configuration</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+<style>
+  :root {
+    --bg: #09090b;
+    --surface: #111113;
+    --surface-2: #19191d;
+    --surface-3: #222228;
+    --border: #27272f;
+    --border-hover: #3a3a44;
+    --text: #ededf0;
+    --text-dim: #8b8ba0;
+    --text-muted: #52526a;
+    --red: #dc2626;
+    --red-dim: rgba(220,38,38,0.1);
+    --blue: #6366f1;
+    --blue-dim: rgba(99,102,241,0.1);
+    --green: #10b981;
+    --green-dim: rgba(16,185,129,0.1);
+    --amber: #f59e0b;
+    --radius: 14px;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'Manrope', sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;}
+  .app{max-width:720px;margin:0 auto;padding:40px 20px 80px;position:relative;z-index:1;}
+
+  .header{display:flex;align-items:center;gap:16px;margin-bottom:36px;}
+  .logo{width:42px;height:42px;border-radius:12px;background:#fff;padding:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .logo img{width:100%;height:100%;object-fit:contain;}
+  .header-text{flex:1;}
+  .header h1{font-size:22px;font-weight:800;letter-spacing:-0.5px;line-height:1.2;}
+  .header h1 span{color:var(--text-muted);font-weight:500;font-size:14px;margin-left:6px;}
+  .header-sub{font-size:12px;color:var(--text-muted);margin-top:2px;}
+  .status-pill{
+    display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:10px;color:var(--text-muted);
+    padding:6px 12px;border:1px solid var(--border);border-radius:20px;background:var(--surface);white-space:nowrap;flex-shrink:0;
+  }
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--red);transition:background 0.3s;}
+  .dot.on{background:var(--green);box-shadow:0 0 8px rgba(16,185,129,0.5);}
+
+  .section-head{
+    font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text-muted);
+    text-transform:uppercase;letter-spacing:2px;margin-bottom:12px;display:flex;align-items:center;gap:8px;
+  }
+  .section-head::after{content:'';flex:1;height:1px;background:var(--border);}
+
+  .activity{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:28px;overflow:hidden;transition:border-color 0.3s;}
+  .activity.flash{border-color:var(--green);box-shadow:0 0 20px var(--green-dim);}
+  .activity-body{max-height:120px;overflow-y:auto;padding:6px 10px;}
+  .act-entry{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:8px;font-size:12px;animation:slideIn 0.3s;}
+  @keyframes slideIn{from{opacity:0;transform:translateY(-5px)}}
+  .act-entry:hover{background:var(--surface-2);}
+  .act-time{font-family:var(--mono);font-size:9px;color:var(--text-muted);min-width:58px;}
+  .act-badge{font-family:var(--mono);font-size:9px;font-weight:600;padding:2px 7px;border-radius:4px;color:white;}
+  .act-msg{color:var(--text-dim);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;}
+  .act-empty{color:var(--text-muted);font-style:italic;padding:14px;text-align:center;font-size:12px;}
+
+  .cards{display:flex;flex-direction:column;gap:12px;margin-bottom:16px;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;position:relative;transition:all 0.25s;}
+  .card:hover{border-color:var(--border-hover);}
+  .card.active{box-shadow:0 0 24px var(--green-dim);border-color:var(--green);}
+  .card.disabled{opacity:0.4;}
+  .card-accent{position:absolute;top:0;left:0;width:3px;height:100%;border-radius:3px 0 0 3px;}
+
+  .card-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 14px 24px;gap:12px;}
+  .card-left{display:flex;align-items:center;gap:12px;flex:1;min-width:0;}
+  .btn-num{font-family:var(--mono);font-size:13px;font-weight:700;width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:9px;color:white;flex-shrink:0;}
+  .card-info{flex:1;min-width:0;}
+  .card-label-row{display:flex;align-items:center;gap:8px;}
+  .card-label{font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .gpio-tag{font-family:var(--mono);font-size:8px;color:var(--text-muted);background:var(--surface-3);padding:2px 6px;border-radius:3px;}
+  .card-preview{font-size:11px;color:var(--text-dim);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:420px;}
+
+  .card-actions{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+  .icon-btn{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:8px;background:var(--surface-2);color:var(--text-dim);cursor:pointer;font-size:12px;transition:all 0.2s;}
+  .icon-btn:hover{border-color:var(--border-hover);color:var(--text);background:var(--surface-3);}
+  .icon-btn.test:hover{border-color:var(--green);color:var(--green);background:var(--green-dim);}
+  .icon-btn.del:hover{border-color:var(--red);color:var(--red);background:var(--red-dim);}
+  .toggle{position:relative;width:36px;height:19px;background:var(--surface-3);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:all 0.3s;flex-shrink:0;}
+  .toggle.on{background:var(--green);border-color:var(--green);}
+  .toggle::after{content:'';position:absolute;top:2px;left:2px;width:13px;height:13px;background:white;border-radius:50%;transition:transform 0.3s;}
+  .toggle.on::after{transform:translateX(17px);}
+
+  .card-edit{max-height:0;overflow:hidden;transition:max-height 0.35s ease;border-top:0 solid var(--border);}
+  .card-edit.open{max-height:600px;border-top-width:1px;}
+  .edit-inner{padding:16px 18px 16px 24px;}
+  .field{margin-bottom:12px;}
+  .field:last-child{margin-bottom:0;}
+  .field label{display:block;font-family:var(--mono);font-size:9px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;}
+  .field input,.field textarea{width:100%;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:var(--sans);font-size:13px;outline:none;transition:border 0.2s;}
+  .field input:focus,.field textarea:focus{border-color:var(--blue);box-shadow:0 0 0 2px var(--blue-dim);}
+  .field textarea{min-height:80px;resize:vertical;font-family:var(--mono);font-size:11px;line-height:1.6;}
+  .field-row{display:flex;gap:10px;}
+  .field-row .field{flex:1;}
+  .color-wrap{display:flex;align-items:center;gap:8px;}
+  .color-wrap input[type="color"]{width:34px;height:32px;padding:2px;cursor:pointer;border-radius:8px;border:1px solid var(--border);}
+  .color-wrap input[type="text"]{flex:1;font-family:var(--mono);font-size:12px;}
+  .save-row{display:flex;justify-content:flex-end;gap:8px;margin-top:12px;}
+  .btn{font-family:var(--mono);font-size:10px;font-weight:600;padding:7px 16px;border-radius:8px;border:1px solid var(--border);cursor:pointer;transition:all 0.2s;}
+  .btn-primary{background:var(--blue);border-color:var(--blue);color:white;}
+  .btn-primary:hover{filter:brightness(1.15);}
+  .btn-ghost{background:transparent;color:var(--text-dim);}
+  .btn-ghost:hover{background:var(--surface-2);color:var(--text);}
+
+  .add-card{border:2px dashed var(--border);border-radius:var(--radius);padding:16px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;color:var(--text-muted);font-size:13px;font-weight:500;transition:all 0.2s;margin-bottom:28px;}
+  .add-card:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-dim);}
+  .add-card .plus{font-size:18px;font-weight:700;}
+
+  .settings{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 22px;margin-bottom:24px;}
+  .setting-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:8px 0;}
+  .setting-row+.setting-row{border-top:1px solid var(--border);}
+  .setting-info{flex:1;}
+  .setting-label{font-size:13px;font-weight:600;}
+  .setting-desc{font-size:10px;color:var(--text-muted);margin-top:1px;}
+  .num-input{width:80px;font-family:var(--mono);font-size:13px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);outline:none;text-align:center;}
+
+  .injector{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 22px;}
+  .injector p{font-size:12px;color:var(--text-dim);line-height:1.6;margin-bottom:12px;}
+  .code-block{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 16px;font-family:var(--mono);font-size:11px;color:var(--green);cursor:pointer;position:relative;user-select:all;word-break:break-all;transition:border 0.2s;}
+  .code-block:hover{border-color:var(--green);}
+  .copy-hint{position:absolute;top:7px;right:10px;font-size:8px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;}
+  .code-block.copied .copy-hint{color:var(--green);}
+  .steps{margin-top:12px;}
+  .step{display:flex;gap:8px;padding:4px 0;font-size:11px;color:var(--text-dim);}
+  .step-n{font-family:var(--mono);font-weight:700;color:var(--text-muted);flex-shrink:0;min-width:18px;}
+
+  @media(max-width:600px){.header{flex-wrap:wrap;}.field-row{flex-direction:column;gap:12px;}}
+  ::-webkit-scrollbar{width:4px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="logo"><img src="logo.png" alt="ClawPad"></div>
+    <div class="header-text">
+      <h1>ClawPad<span>config</span></h1>
+      <div class="header-sub">Map physical buttons to OpenClaw commands</div>
+    </div>
+    <div class="status-pill"><div class="dot" id="dot"></div><span id="statusText">Offline</span></div>
+  </div>
+
+  <div class="section-head">Live Activity</div>
+  <div class="activity" id="activityLog">
+    <div class="activity-body" id="actEntries"><div class="act-empty">Waiting for button presses...</div></div>
+  </div>
+
+  <div class="section-head">Button Mapping</div>
+  <div class="cards" id="cardsGrid"></div>
+  <div class="add-card" id="addBtn" onclick="addButton()"><span class="plus">+</span> Add Button Mapping</div>
+
+  <div class="section-head">Settings</div>
+  <div class="settings">
+    <div class="setting-row">
+      <div class="setting-info"><div class="setting-label">Auto-send</div><div class="setting-desc">Automatically click Send in OpenClaw after typing the message</div></div>
+      <div class="toggle on" id="autoSendToggle" onclick="toggleAutoSend()"></div>
+    </div>
+    <div class="setting-row">
+      <div class="setting-info"><div class="setting-label">Send delay</div><div class="setting-desc">Milliseconds to wait before sending (0 = instant)</div></div>
+      <input type="number" class="num-input" value="500" min="0" max="5000" step="100" id="sendDelay" onchange="updateSettings()">
+    </div>
+  </div>
+
+  <div class="section-head" style="margin-top:28px">Connect to OpenClaw</div>
+  <div class="injector">
+    <p>Copy the script below and paste it into the OpenClaw browser console (<b>F12 → Console</b>):</p>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <button class="btn btn-primary" style="flex:1;padding:12px;font-size:12px;" onclick="copyScript();" id="copyBtn">📋 Copy to Clipboard</button>
+      <button class="btn btn-ghost" style="padding:12px;font-size:12px;" onclick="selectScript();">Select All</button>
+    </div>
+    <textarea id="scriptBox" readonly spellcheck="false" style="
+      width:100%;height:100px;background:var(--bg);border:1px solid var(--border);border-radius:8px;
+      padding:12px;font-family:var(--mono);font-size:10px;color:var(--green);resize:vertical;
+      outline:none;line-height:1.5;cursor:text;
+    ">Loading...</textarea>
+    <div class="steps">
+      <div class="step"><span class="step-n">1.</span>Open OpenClaw at <b>localhost:18789</b></div>
+      <div class="step"><span class="step-n">2.</span>Press <b>F12</b> → Console tab</div>
+      <div class="step"><span class="step-n">3.</span>Type <b>allow pasting</b> if prompted, then Enter</div>
+      <div class="step"><span class="step-n">4.</span>Click <b>Copy</b> (or Select All → Ctrl+C), then paste in the console → Enter</div>
+      <div class="step"><span class="step-n">5.</span>Green toast <b>"✓ ClawPad connected!"</b> = success</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const BASE=window.location.origin;
+let config=null,socket=null,pressCount=0;
+const COLORS=['#6366f1','#10b981','#ef4444','#f59e0b','#8b5cf6','#ec4899','#06b6d4','#84cc16'];
+const GPIOS=[12,14,27,26,25,33,32,35];
+
+function init(){
+  socket=io(BASE);
+  socket.on('connect',()=>{socket.emit('register',{type:'config'});setStatus(true);});
+  socket.on('disconnect',()=>setStatus(false));
+  socket.on('registered',d=>{config=d.config;render();});
+  socket.on('config_updated',d=>{config=d;render();});
+  socket.on('button_activity',d=>{pressCount++;addActivity(d);flashCard(d.button_id);});
+}
+function setStatus(on){
+  document.getElementById('dot').className='dot'+(on?' on':'');
+  document.getElementById('statusText').textContent=on?'Connected':'Offline';
+}
+function render(){
+  if(!config)return;
+  const g=document.getElementById('cardsGrid');g.innerHTML='';
+  const entries=Object.entries(config.buttons);
+  document.getElementById('addBtn').style.display=entries.length>=8?'none':'flex';
+  document.getElementById('autoSendToggle').classList.toggle('on',config.settings.auto_send);
+  document.getElementById('sendDelay').value=config.settings.send_delay_ms||500;
+  for(const[id,btn]of entries){
+    const c=document.createElement('div');
+    c.className='card'+(btn.enabled?'':' disabled');c.id='card-'+id;
+    c.innerHTML=`
+      <div class="card-accent" style="background:${btn.color}"></div>
+      <div class="card-head">
+        <div class="card-left">
+          <div class="btn-num" style="background:${btn.color}">${id}</div>
+          <div class="card-info">
+            <div class="card-label-row"><span class="card-label">${esc(btn.label)}</span><span class="gpio-tag">GPIO ${btn.gpio}</span></div>
+            <div class="card-preview">${esc(btn.message)}</div>
+          </div>
+        </div>
+        <div class="card-actions">
+          <button class="icon-btn test" title="Test" onclick="testBtn('${id}')">▶</button>
+          <button class="icon-btn" title="Edit" onclick="toggleEdit('${id}')">✎</button>
+          ${entries.length>1?`<button class="icon-btn del" title="Remove" onclick="removeBtn('${id}')">✕</button>`:''}
+          <div class="toggle ${btn.enabled?'on':''}" onclick="toggleBtn('${id}')"></div>
+        </div>
+      </div>
+      <div class="card-edit" id="edit-${id}">
+        <div class="edit-inner">
+          <div class="field-row">
+            <div class="field"><label>Button Label</label><input type="text" value="${escA(btn.label)}" id="lbl-${id}" placeholder="e.g. Schedule Meeting"></div>
+            <div class="field" style="max-width:120px"><label>GPIO Pin</label><input type="number" value="${btn.gpio}" id="gpio-${id}" min="0" max="39" style="font-family:var(--mono)"></div>
+          </div>
+          <div class="field"><label>Message / Prompt sent to OpenClaw</label><textarea id="msg-${id}" placeholder="The exact text typed into OpenClaw's chat...">${esc(btn.message)}</textarea></div>
+          <div class="field" style="max-width:220px"><label>Color</label>
+            <div class="color-wrap">
+              <input type="color" value="${btn.color}" id="clr-${id}" onchange="document.getElementById('clrt-${id}').value=this.value">
+              <input type="text" value="${btn.color}" id="clrt-${id}" onchange="document.getElementById('clr-${id}').value=this.value">
+            </div>
+          </div>
+          <div class="save-row">
+            <button class="btn btn-ghost" onclick="toggleEdit('${id}')">Cancel</button>
+            <button class="btn btn-primary" onclick="saveBtn('${id}')">Save Mapping</button>
+          </div>
+        </div>
+      </div>`;
+    g.appendChild(c);
+  }
+}
+function toggleEdit(id){document.getElementById('edit-'+id).classList.toggle('open');}
+function toggleBtn(id){config.buttons[id].enabled=!config.buttons[id].enabled;saveConfig();}
+function saveBtn(id){
+  const b=config.buttons[id];
+  b.label=document.getElementById('lbl-'+id).value.trim()||'Untitled';
+  b.message=document.getElementById('msg-'+id).value.trim();
+  b.gpio=parseInt(document.getElementById('gpio-'+id).value)||12;
+  b.color=document.getElementById('clr-'+id).value;
+  toggleEdit(id);saveConfig();
+}
+function removeBtn(id){
+  if(!confirm(`Remove button ${id} ("${config.buttons[id].label}")?`))return;
+  delete config.buttons[id];saveConfig();
+}
+function addButton(){
+  const ids=Object.keys(config.buttons).map(Number);
+  const newId=(Math.max(0,...ids)+1).toString();
+  const usedGpios=Object.values(config.buttons).map(b=>b.gpio);
+  const nextGpio=GPIOS.find(g=>!usedGpios.includes(g))||25;
+  config.buttons[newId]={label:'New Button',message:'',color:COLORS[ids.length%COLORS.length],gpio:nextGpio,enabled:true};
+  saveConfig();
+  setTimeout(()=>toggleEdit(newId),100);
+}
+async function saveConfig(){await fetch(BASE+'/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(config)});}
+async function testBtn(id){const c=document.getElementById('card-'+id);c.classList.add('active');await fetch(BASE+'/api/test/'+id,{method:'POST'});setTimeout(()=>c.classList.remove('active'),1500);}
+function flashCard(id){const c=document.getElementById('card-'+id);if(!c)return;c.classList.add('active');setTimeout(()=>c.classList.remove('active'),2000);}
+function addActivity(d){
+  const el=document.getElementById('actEntries'),log=document.getElementById('activityLog');
+  const empty=el.querySelector('.act-empty');if(empty)empty.remove();
+  log.classList.add('flash');setTimeout(()=>log.classList.remove('flash'),2000);
+  const t=new Date().toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const btn=config.buttons[d.button_id];
+  const e=document.createElement('div');e.className='act-entry';
+  e.innerHTML=`<span class="act-time">${t}</span><span class="act-badge" style="background:${btn?.color||'#666'}">${esc(d.label)}</span><span class="act-msg">${esc(d.message)}</span>`;
+  el.prepend(e);while(el.children.length>20)el.lastChild.remove();
+}
+function toggleAutoSend(){config.settings.auto_send=!config.settings.auto_send;document.getElementById('autoSendToggle').classList.toggle('on',config.settings.auto_send);saveConfig();}
+function updateSettings(){config.settings.send_delay_ms=parseInt(document.getElementById('sendDelay').value)||500;saveConfig();}
+var injectorScript='';
+function setupCode(){
+  fetch(BASE+'/injector.js').then(function(r){return r.text();}).then(function(t){
+    injectorScript=t;
+    document.getElementById('scriptBox').value=t;
+  }).catch(function(){
+    document.getElementById('scriptBox').value='// Error loading script. Refresh the page and try again.';
+  });
+}
+function selectScript(){
+  var box=document.getElementById('scriptBox');
+  box.focus();box.select();
+}
+function copyScript(){
+  var box=document.getElementById('scriptBox');
+  box.focus();box.select();
+  var ok=false;
+  // Try modern clipboard API first
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(box.value).then(showCopied).catch(function(){
+      // Fallback to execCommand
+      try{ok=document.execCommand('copy');if(ok)showCopied();}catch(e){}
+    });
+  }else{
+    // Fallback for non-secure contexts (HTTP, IP addresses)
+    try{ok=document.execCommand('copy');if(ok)showCopied();}catch(e){}
+  }
+}
+function showCopied(){
+  var b=document.getElementById('copyBtn');b.textContent='\u2713 Copied!';b.style.background='#10b981';b.style.borderColor='#10b981';
+  setTimeout(function(){b.textContent='\uD83D\uDCCB Copy to Clipboard';b.style.background='';b.style.borderColor='';},2000);
+}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function escA(s){return String(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+init();setupCode();
+</script>
+</body>
+</html>
